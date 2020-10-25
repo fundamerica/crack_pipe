@@ -10,17 +10,22 @@ module CrackPipe
           Result.new(action(action, context, track))
         end
 
-        def action(action, context, track = :default)
-          action.class.steps.each_with_object([]) do |s, results|
-            next unless track == s.track
+        def action(action, context, track = :default, current_step_index = 0, results = [])
+          steps = action.class.steps
+          return results if current_step_index == steps.size
 
-            results!(results, action, s, context).last.tap do |r|
-              action.after_flow_control(r)
-              context = r[:context]
-              track = r[:next]
-              return results if r[:signal] == :halt
+          current_step = steps[current_step_index]
+
+          if track == current_step.track
+            results!(results, action, current_step, context).last.tap do |output|
+              action.after_flow_control(output)
+              context = output[:context]
+              track = output[:next]
+              return results if output[:signal] == :halt
             end
           end
+
+          action(action, context, track, current_step_index + 1, results)
         end
 
         def flow_control_hash(action, step, context, output)
