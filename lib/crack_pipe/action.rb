@@ -13,6 +13,8 @@ module CrackPipe
   class Action
     @steps = []
 
+    attr_accessor :context, :atts
+
     class << self
       attr_reader :steps
 

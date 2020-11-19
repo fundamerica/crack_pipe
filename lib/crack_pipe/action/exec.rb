@@ -80,11 +80,23 @@ module CrackPipe
         end
 
         def exec_with_args(e, action, context, kwargs)
+          action.context = context
+          action.atts = context[:atts]
+
           if e.is_a?(Symbol)
-            action.public_send(e, context, **kwargs)
+            if ctx_expected_as_arg?(action.method(e))
+              # DEPRECATED
+              action.public_send(e, context, **kwargs)
+            else
+              action.public_send(e)
+            end
           else
             e.call(context, **kwargs)
           end
+        end
+
+        def ctx_expected_as_arg?(method)
+          method.arity.nonzero?
         end
 
         def kwargs_with_context(action, context)

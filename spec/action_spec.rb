@@ -56,6 +56,30 @@ module CrackPipe
       end
     end
 
+    let(:nesting_action_with_internal_context) do
+      klass = action
+
+      Class.new(Action) do
+        step :before
+        step klass
+        step :after
+        fail :after_fail
+
+        def before
+          context[:before] = true
+        end
+
+        def after
+          context[:after] = true
+          context[:value].to_s.upcase
+        end
+
+        def after_fail
+          :custom_error_code_02
+        end
+      end
+    end
+
     let(:action_with_skips) do
       klass = skipped_action
 
@@ -166,6 +190,26 @@ module CrackPipe
 
     it 'nests one action in another' do
       r = nesting_action.call(value: 'x')
+      r.history.size.must_equal(5)
+
+      r.output.must_equal('X')
+      r[:after].must_equal(true)
+      r[:before].must_equal(true)
+      r[:value_class].must_equal('String')
+
+      r = nesting_action.call(value: false)
+      r.history.size.must_equal(6)
+
+      r.output.must_equal(:custom_error_code_02)
+      r[:before].must_equal(true)
+
+      r = nesting_action.call(value: :short_circuit!)
+      assert r.failure?
+      r.output.must_equal(:short_circuit!)
+    end
+
+    it 'nests one action in another with instance var' do
+      r = nesting_action_with_internal_context.call(value: 'x')
       r.history.size.must_equal(5)
 
       r.output.must_equal('X')
